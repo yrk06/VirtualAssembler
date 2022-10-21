@@ -1,0 +1,160 @@
+PARSER_BEGIN(RiSCAssembler)
+package parser;
+/**
+ * Simple brace matcher.
+ */
+public class RiSCAssembler {
+
+  /** Main entry point.*/
+  /*public static void main(String args[]) {
+    RiSCAssembler parser = new RiSCAssembler(System.in);
+    try {
+        SimpleNode n = parser.Input();
+        n.dump("");
+        System.out.println(n.jjtGetValue());
+        System.out.println("Thank you.");
+      } catch (Exception e) {
+        System.out.println("Oops.");
+        System.out.println(e.getMessage());
+        e.printStackTrace();
+      }
+  }*/
+
+}
+
+PARSER_END(RiSCAssembler)
+
+SKIP : {
+    " "
+|   "\t"
+|   <";" (~["\n","\r"])* ("\n"|"\r"|"\r\n")> 
+}
+TOKEN : {
+    <REGISTER: ((["x","X"] ["0"-"6"]) | ("sp") )>
+    |
+    <LABEL_DEC: <IDENTIFIER> ":">
+    |
+    <IDENTIFIER: ["a"-"z","A"-"Z","_"] ( ["a"-"z","A"-"Z","_","0"-"9"] )*>
+    |
+    <DIRECTIVE: "." <IDENTIFIER>>
+    |
+    <IMMEDIATE: <POS_IMMEDIATE> | <NEG_IMMEDIATE> >
+    |
+    <#NEG_IMMEDIATE: "-" <POS_IMMEDIATE>>
+    |
+    <#POS_IMMEDIATE: (<DECIMAL_LITERAL> | <HEX_LITERAL> | <OCTAL_LITERAL>)>
+    |
+    <#DECIMAL_LITERAL: ["1"-"9"] (["0"-"9"])* >
+    |
+    <#HEX_LITERAL: "0" ["x","X"] (["0"-"9","a"-"f","A"-"F"])+ >
+    |
+    <#OCTAL_LITERAL: "0" (["0"-"7"])* >
+}
+
+/** Root production. */
+SimpleNode Input() :
+{}
+{
+  ( (LabelDec())? ("\n")* (Directive() | Command())  )* <EOF>
+  { return jjtThis; }
+}
+
+void Directive() :
+{
+  Token t;
+}
+{
+  t=<DIRECTIVE>
+  {
+    jjtThis.jjtSetValue(t.image);
+  }
+  
+  ( Label() | Immediate())*
+
+  ("\n")*
+}
+
+void Command() :
+{}
+{
+  Instruction() ("\n")*
+}
+
+void LabelDec() : 
+{Token t;}
+{
+  t=<LABEL_DEC>
+  {
+    jjtThis.jjtSetValue(t.image.replace(":",""));
+  }
+}
+
+void Label() :
+{Token t;}
+{
+  t=<IDENTIFIER>
+  {
+    jjtThis.jjtSetValue(t.image);
+  }
+}
+
+void Instruction() :
+{
+  Token t;
+}
+{
+  t=<IDENTIFIER>
+  {
+    jjtThis.jjtSetValue(t.image);
+  }
+  ( Parameters() )?
+}
+
+void Parameters() :
+{}
+{
+  Argument() ("," Argument())*
+}
+
+void Argument() :
+{
+  Token t;
+}
+{
+  Register() | Immediate() | Label()
+}
+
+void Register() :
+{
+  Token t;
+}
+{
+  t=<REGISTER>
+  {
+    jjtThis.jjtSetValue(t.image.replace("sp","0").replace("x","").replace("X",""));
+  }
+}
+
+void Immediate() :
+{
+  Token t;
+}
+{
+  t=<IMMEDIATE>
+  {
+    jjtThis.jjtSetValue(t.image);
+  }
+}
+
+/** Brace matching production. */
+void MatchedBraces() :
+{}
+{
+  "{" [ MatchedBraces() ] "}"
+}
+
+void NotProcess():
+{}
+{
+  "\n"
+}
